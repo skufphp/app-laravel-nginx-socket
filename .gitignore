@@ -13,6 +13,7 @@
 .env
 .env.backup
 .env.production
+!.env.docker
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
