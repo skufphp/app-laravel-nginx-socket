@@ -10,7 +10,7 @@ services:
     environment:
       XDEBUG_MODE: ${XDEBUG_MODE}
       XDEBUG_START: ${XDEBUG_START}
-      XDEBUG_CLIENT_HOST: ${XDEBUG_CLIENT_HOST:-host.docker.internal}
+      XDEBUG_CLIENT_HOST: ${XDEBUG_CLIENT_HOST}
     volumes:
       - .:/var/www/laravel
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/local.ini:ro
