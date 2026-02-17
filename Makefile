@@ -89,7 +89,6 @@ setup: ## Полная инициализация проекта с нуля
 	@make migrate
 	@make permissions
 	@make cleanup-nginx
-	@make npm-install
 	@echo "$(GREEN)✓ Проект готов: http://localhost$(NC)"
 
 install-deps: ## Установка всех зависимостей (Composer + NPM)
