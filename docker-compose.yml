@@ -2,8 +2,8 @@ services:
   # Laravel PHP-FPM
   laravel-php-nginx-socket:
     build:
-      context: .
-      dockerfile: docker/php.Dockerfile
+      context: ./docker
+      dockerfile: php.Dockerfile
     container_name: laravel-php-nginx-socket
     restart: unless-stopped
     working_dir: /var/www/laravel
@@ -28,8 +28,8 @@ services:
   # Веб-сервер Nginx
   laravel-nginx-socket:
     build:
-      context: .
-      dockerfile: docker/nginx.Dockerfile
+      context: ./docker
+      dockerfile: nginx.Dockerfile
     container_name: laravel-nginx-socket
     restart: unless-stopped
     ports:
