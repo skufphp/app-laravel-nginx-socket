@@ -47,17 +47,27 @@ RUN pecl channel-update pecl.php.net \
         opcache \
     && apk del $PHPIZE_DEPS
 
-# Удаляем стандартные примеры конфигураций
-RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf
+# Очистка стандартных конфигураций PHP-FPM
+# Мы заменяем их своими для настройки работы через UNIX-сокет
+RUN rm -f \
+        /usr/local/etc/php-fpm.d/www.conf.default \
+        /usr/local/etc/php-fpm.d/zz-docker.conf
+
+# Копирование кастомной конфигурации пула PHP-FPM
+COPY ./php/www.conf /usr/local/etc/php-fpm.d/www.conf
 
 # Гарантируем существование директории под Unix-сокеты
 RUN mkdir -p /var/run/php && chown -R www-data:www-data /var/run/php
 
-# Устанавливаем Composer
+# Установка Composer (менеджер зависимостей PHP)
+# Копируем бинарный файл из официального Docker-образа Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Устанавливаем рабочую директорию и гарантируем правильные права
 WORKDIR /var/www/laravel
+
+# Установка прав доступа (PHP-FPM в Alpine по умолчанию работает от www-data)
 RUN chown -R www-data:www-data /var/www/laravel
 
+# Запуск PHP-FPM в фоновом режиме (флаг -F заставляет его работать на переднем плане для Docker)
 CMD ["php-fpm", "-F"]

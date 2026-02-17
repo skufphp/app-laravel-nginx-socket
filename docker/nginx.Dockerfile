@@ -1,12 +1,13 @@
 # ==============================================================================
-# Nginx Custom Image (for Unix Socket access)
+# Dockerfile для Nginx
+# Базовый образ: Nginx на Alpine Linux (минималистичный и производительный)
 # ==============================================================================
-# Базовый образ - официальный Nginx на Alpine Linux
-FROM nginx:stable-alpine
+FROM nginx:alpine
 
 # Добавляем пользователя nginx в группу www-data
-# Это нужно для доступа к Unix-сокету, который создается PHP-FPM
+# Это необходимо для того, чтобы Nginx мог читать/писать в UNIX-сокет,
+# владельцем которого является пользователь www-data (из PHP-FPM)
 RUN addgroup nginx www-data
 
-# Открываем HTTP порт
-EXPOSE 80
+# Рабочая директория (соответствует PHP-контейнеру)
+WORKDIR /var/www/laravel
