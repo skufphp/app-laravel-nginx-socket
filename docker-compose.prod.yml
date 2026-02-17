@@ -1,0 +1,7 @@
+services:
+  habbits-tracker:
+    image: "${CI_REGISTRY_IMAGE}:${IMAGE_TAG}"
+    container_name: my-cool-container
+    ports:
+      - "8000:80"
+    restart: unless-stopped
