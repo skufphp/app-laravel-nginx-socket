@@ -2,7 +2,7 @@
 # Laravel PHP-FPM Nginx Socket (Boilerplate)
 # ==========================================
 
-.PHONY: help up down restart build rebuild logs status shell-php shell-nginx shell-postgres clean setup artisan migrate laravel-install
+.PHONY: help up down restart build rebuild logs status shell-php shell-nginx shell-postgres clean setup artisan migrate
 
 # Цвета для вывода
 YELLOW=\033[0;33m
@@ -19,6 +19,7 @@ COMPOSE = $(COMPOSE_DEV)
 PHP_SERVICE=laravel-php-nginx-socket
 NGINX_SERVICE=laravel-nginx-socket
 POSTGRES_SERVICE=laravel-postgres-nginx-socket
+REDIS_SERVICE=laravel-redis-nginx-socket
 PGADMIN_SERVICE=laravel-pgadmin-nginx-socket
 NODE_SERVICE=laravel-node-nginx-socket
 
@@ -78,6 +79,9 @@ logs-pgadmin: ## Просмотр логов pgAdmin
 logs-node: ## Просмотр логов Node (HMR)
 	$(COMPOSE) logs -f $(NODE_SERVICE)
 
+logs-redis: ## Просмотр логов Redis
+	$(COMPOSE) logs -f $(REDIS_SERVICE)
+
 status: ## Статус контейнеров
 	$(COMPOSE) ps
 
@@ -96,12 +100,18 @@ shell-postgres: ## Подключиться к PostgreSQL CLI
 	DB_NAME=$$(grep '^DB_DATABASE=' .env | cut -d '=' -f 2- | tr -d '[:space:]'); \
 	$(COMPOSE) exec $(POSTGRES_SERVICE) psql -U $$DB_USER -d $$DB_NAME
 
+shell-redis: ## Подключиться к Redis CLI
+	@echo "$(YELLOW)Подключение к Redis...$(NC)"
+	$(COMPOSE) exec $(REDIS_SERVICE) redis-cli ping
+
 # --- Команды Laravel ---
 setup: ## Полная инициализация проекта с нуля
 	@make build
 	@make up
-	@echo "$(YELLOW)Ожидание готовности базы данных...$(NC)"
+	@echo "$(YELLOW)Ожидание готовности PostgreSQL...$(NC)"
 	@$(COMPOSE) exec $(POSTGRES_SERVICE) sh -c 'until pg_isready; do sleep 1; done'
+	@echo "$(YELLOW)Ожидание готовности Redis...$(NC)"
+	@$(COMPOSE) exec $(REDIS_SERVICE) sh -c 'until redis-cli ping | grep -q PONG; do sleep 1; done'
 	@make install-deps
 	@make artisan CMD="key:generate"
 	@make migrate
@@ -173,8 +183,9 @@ info: ## Показать информацию о проекте
 	@echo "$(GREEN)Сервисы:$(NC)"
 	@echo "  • PHP-FPM 8.4 (Alpine)"
 	@echo "  • Nginx"
-	@echo "  • PostgreSQL 17"
-	@echo "  • pgAdmin 4"
+	@echo "  • PostgreSQL 18.2"
+	@echo "  • Redis"
+	@echo "  • pgAdmin 4 (dev only)"
 	@echo ""
 	@echo "$(GREEN)Структура:$(NC)"
 	@echo "  • docker/           - Dockerfiles и конфиги сервисов"
@@ -182,8 +193,9 @@ info: ## Показать информацию о проекте
 	@echo ""
 	@echo "$(GREEN)Порты:$(NC)"
 	@echo "  • 80   - Nginx (Web Server)"
-	@echo "  • 5432 - PostgreSQL (Database)"
-	@echo "  • 8080 - pgAdmin (DB Admin Interface)"
+	@echo "  • 5432 - PostgreSQL (dev forwarded)"
+	@echo "  • 6379 - Redis (dev forwarded)"
+	@echo "  • 8080 - pgAdmin (dev only)"
 	@echo "  • Unix Socket - Связь PHP-FPM <-> Nginx"
 
 validate: ## Проверить доступность сервисов по HTTP

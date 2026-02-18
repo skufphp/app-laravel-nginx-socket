@@ -1,6 +1,6 @@
 # Инструкция по установке Laravel Boilerplate
 
-Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM + Nginx (Unix socket) + PostgreSQL + pgAdmin**.
+Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM + Nginx (Unix socket) + PostgreSQL + Redis + pgAdmin**.
 
 ## Для каких приложений подходит эта архитектура
 
@@ -63,6 +63,7 @@ composer create-project laravel/laravel .
 # --- Database Connection ---
 # Важно! В основной секции .env замените DB_HOST=127.0.0.1
 # на имя сервиса БД из вашего docker-compose.yml (по умолчанию: laravel-postgres-nginx-socket)
+# А REDIS_HOST=127.0.0.1 на laravel-redis-nginx-socket
 
 # --- pgAdmin Web Interface ---
 # Доступ к pgAdmin: http://localhost:8080
