@@ -1,7 +1,10 @@
 services:
-  habbits-tracker:
-    image: "${CI_REGISTRY_IMAGE}:${IMAGE_TAG}"
-    container_name: my-cool-container
+  laravel-php-nginx-socket:
+    image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
+    restart: unless-stopped
+
+  laravel-nginx-socket:
+    image: "${CI_REGISTRY_IMAGE}/nginx:${IMAGE_TAG}"
+    restart: unless-stopped
     ports:
       - "8000:80"
-    restart: unless-stopped
