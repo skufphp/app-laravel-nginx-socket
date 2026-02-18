@@ -207,7 +207,6 @@ validate: ## Проверить доступность сервисов по HTT
 	@echo "$(YELLOW)Статус контейнеров:$(NC)"
 	@$(COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
-
 clean: ## Удалить контейнеры и тома
 	$(COMPOSE) down -v
 	@echo "$(RED)! Контейнеры и данные БД удалены$(NC)"

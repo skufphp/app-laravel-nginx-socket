@@ -15,7 +15,7 @@ services:
     volumes:
       - unix-socket:/var/run/php
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network
     healthcheck:
       test:
         [
@@ -37,7 +37,7 @@ services:
     volumes:
       - unix-socket:/var/run/php
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network
     healthcheck:
       test: [ "CMD", "nginx", "-t" ]
       interval: 10s
@@ -60,7 +60,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 10s
@@ -77,7 +77,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -91,5 +91,5 @@ volumes:
   redis-data:
 
 networks:
-  laravel-php-nginx-socket-network:
+  laravel-nginx-socket-network:
     driver: bridge

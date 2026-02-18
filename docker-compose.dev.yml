@@ -33,7 +33,7 @@ services:
     ports:
       - "5173:5173"
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network
 
   # Dev-only: проброс Postgres наружу (если нужен доступ с хоста)
   laravel-postgres-nginx-socket:
