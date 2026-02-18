@@ -11,3 +11,7 @@ RUN addgroup nginx www-data
 
 # Рабочая директория (соответствует PHP-контейнеру)
 WORKDIR /var/www/laravel
+
+# Вшиваем конфиг виртуального хоста в образ (prod-friendly).
+# В dev при желании можно будет переопределить volume-ом.
+COPY ./nginx/conf.d/laravel.conf /etc/nginx/conf.d/default.conf

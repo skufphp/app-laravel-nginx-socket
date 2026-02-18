@@ -53,7 +53,7 @@ composer create-project laravel/laravel .
 ### 2. Копирование файлов boilerplate
 Скопируйте следующие файлы и папки из данного boilerplate в корень вашего нового проекта Laravel:
 * Папку `docker/` (включая все подпапки и файлы)
-* Файл `docker-compose.yml`
+* Файлы `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.prod.yml`
 * Файл `Makefile`
 
 ### 3. Настройка окружения (.env)
