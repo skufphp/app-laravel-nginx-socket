@@ -1,16 +1,19 @@
 services:
+  # Настройки PHP для Production (использование образов из Registry)
   laravel-php-nginx-socket:
     image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
     restart: unless-stopped
     env_file:
       - .env
 
+  # Настройки Nginx для Production
   laravel-nginx-socket:
     image: "${CI_REGISTRY_IMAGE}/nginx:${IMAGE_TAG}"
     restart: unless-stopped
     ports:
       - "8000:80"
 
+  # Сервис для автоматического запуска миграций при деплое
   migrate:
     image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
     restart: "no"
@@ -22,4 +25,4 @@ services:
       laravel-postgres-nginx-socket:
         condition: service_healthy
     networks:
-      - laravel-php-nginx-socket-network
+      - laravel-nginx-socket-network

@@ -181,7 +181,7 @@ info: ## Показать информацию о проекте
 	@echo "$(YELLOW)Laravel-Nginx-Socket Development Environment$(NC)"
 	@echo "======================================"
 	@echo "$(GREEN)Сервисы:$(NC)"
-	@echo "  • PHP-FPM 8.4 (Alpine)"
+	@echo "  • PHP-FPM 8.5 (Alpine)"
 	@echo "  • Nginx"
 	@echo "  • PostgreSQL 18.2"
 	@echo "  • Redis"
@@ -206,7 +206,6 @@ validate: ## Проверить доступность сервисов по HTT
 	@curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 && echo " $(GREEN)✓$(NC)" || echo " $(RED)✗$(NC)"
 	@echo "$(YELLOW)Статус контейнеров:$(NC)"
 	@$(COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
-
 
 clean: ## Удалить контейнеры и тома
 	$(COMPOSE) down -v
