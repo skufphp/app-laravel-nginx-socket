@@ -181,7 +181,7 @@ info: ## Показать информацию о проекте
 	@echo "$(YELLOW)Laravel-Nginx-Socket Development Environment$(NC)"
 	@echo "======================================"
 	@echo "$(GREEN)Сервисы:$(NC)"
-	@echo "  • PHP-FPM 8.4 (Alpine)"
+	@echo "  • PHP-FPM 8.5 (Alpine)"
 	@echo "  • Nginx"
 	@echo "  • PostgreSQL 18.2"
 	@echo "  • Redis"

@@ -60,7 +60,8 @@ RUN set -eux; \
 # 5) PHP-FPM config (unix socket) + php.ini
 RUN rm -f \
       /usr/local/etc/php-fpm.d/www.conf.default \
-      /usr/local/etc/php-fpm.d/zz-docker.conf
+      /usr/local/etc/php-fpm.d/zz-docker.conf \
+      /usr/local/etc/php-fpm.d/www.conf
 
 COPY ./php/www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY ./php/php.ini /usr/local/etc/php/conf.d/local.ini
