@@ -36,9 +36,9 @@ check-files: ## Проверить наличие всех необходимы�
 	@test -f .env || (echo "$(RED)✗ .env не найден. Убедитесь, что вы настроили проект Laravel$(NC)" && exit 1)
 	@test -f docker/php.Dockerfile || (echo "$(RED)✗ docker/php.Dockerfile не найден$(NC)" && exit 1)
 	@test -f docker/nginx.Dockerfile || (echo "$(RED)✗ docker/nginx.Dockerfile не найден$(NC)" && exit 1)
-	@test -f docker/nginx/conf.d/laravel.conf || (echo "$(RED)✗ config/nginx/conf.d/laravel.conf не найден$(NC)" && exit 1)
-	@test -f docker/php/php.ini || (echo "$(RED)✗ config/php/php.ini не найден$(NC)" && exit 1)
-	@test -f docker/php/www.conf || (echo "$(RED)✗ config/php/www.conf не найден$(NC)" && exit 1)
+	@test -f docker/nginx/conf.d/laravel.conf || (echo "$(RED)✗ docker/nginx/conf.d/laravel.conf не найден$(NC)" && exit 1)
+	@test -f docker/php/php.ini || (echo "$(RED)✗ docker/php/php.ini не найден$(NC)" && exit 1)
+	@test -f docker/php/www.conf || (echo "$(RED)✗ docker/php/www.conf не найден$(NC)" && exit 1)
 	@echo "$(GREEN)✓ Все файлы на месте$(NC)"
 
 up: check-files ## Запустить контейнеры (Dev)
