@@ -49,6 +49,16 @@ services:
     ports:
       - "${REDIS_FORWARD_PORT}:6379"
 
+  # Queue Worker: монтирование кода для разработки
+  laravel-queue-nginx-socket:
+    volumes:
+      - .:/var/www/laravel
+
+  # Scheduler: монтирование кода для разработки
+  laravel-scheduler-nginx-socket:
+    volumes:
+      - .:/var/www/laravel
+
   # Только для разработки: интерфейс управления БД (pgAdmin)
   laravel-pgadmin-nginx-socket:
     image: dpage/pgadmin4:latest

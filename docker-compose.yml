@@ -17,6 +17,11 @@ services:
       - unix-socket:/var/run/php
     networks:
       - laravel-nginx-socket-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       # Проверка доступности FPM через сокет
       test:
@@ -41,6 +46,11 @@ services:
       - unix-socket:/var/run/php
     networks:
       - laravel-nginx-socket-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: [ "CMD", "nginx", "-t" ]
       interval: 10s
@@ -87,6 +97,50 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Laravel Queue Worker — обработка фоновых задач
+  laravel-queue-nginx-socket:
+    build:
+      context: ./docker
+      dockerfile: php.Dockerfile
+      target: php-base
+    container_name: laravel-queue-nginx-socket
+    restart: unless-stopped
+    working_dir: /var/www/laravel
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    networks:
+      - laravel-nginx-socket-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      laravel-php-nginx-socket:
+        condition: service_healthy
+      laravel-redis-nginx-socket:
+        condition: service_healthy
+
+  # Laravel Scheduler — запуск периодических задач (cron)
+  laravel-scheduler-nginx-socket:
+    build:
+      context: ./docker
+      dockerfile: php.Dockerfile
+      target: php-base
+    container_name: laravel-scheduler-nginx-socket
+    restart: unless-stopped
+    working_dir: /var/www/laravel
+    command: ["sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    networks:
+      - laravel-nginx-socket-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      laravel-php-nginx-socket:
+        condition: service_healthy
 
 volumes:
   unix-socket:
