@@ -1,0 +1,44 @@
+# ==============================================================================
+# .dockerignore — Исключения из контекста сборки Docker
+# ==============================================================================
+# Уменьшает размер контекста, ускоряет сборку и предотвращает утечку секретов.
+
+# --- VCS и IDE ---
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+*.swo
+
+# --- Docker (не нужны внутри образа) ---
+docker-compose*.yml
+docker/
+Makefile
+.dockerignore
+.env
+.env.*
+
+# --- Документация ---
+docs/
+*.md
+LICENSE
+
+# --- Зависимости (устанавливаются внутри образа) ---
+node_modules/
+vendor/
+
+# --- Кеши и логи ---
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# --- Тесты ---
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# --- CI/CD ---
+gitlab-ci.yml
+.gitlab-ci.yml

@@ -13,6 +13,20 @@ services:
     ports:
       - "8000:80"
 
+  # Queue Worker (Production)
+  laravel-queue-nginx-socket:
+    image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  # Scheduler (Production)
+  laravel-scheduler-nginx-socket:
+    image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
+    restart: unless-stopped
+    env_file:
+      - .env
+
   # Сервис для автоматического запуска миграций при деплое
   migrate:
     image: "${CI_REGISTRY_IMAGE}/php:${IMAGE_TAG}"
