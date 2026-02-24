@@ -87,7 +87,34 @@ CMD ["php-fpm", "-F"]
 # Production образ: код + собранные ассеты (идеально для деплоя)
 # ==============================================================================
 FROM php-base AS production
+
+# Production php.ini (заменяет dev-конфиг)
+RUN rm -f /usr/local/etc/php/conf.d/local.ini
+COPY ./php/php.prod.ini /usr/local/etc/php/conf.d/local.ini
+
 WORKDIR /var/www/laravel
 
+# Копируем код приложения
 COPY ../ ./
+
+# Устанавливаем зависимости Composer (без dev-пакетов, с оптимизацией автозагрузки)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist \
+    && rm -rf /root/.composer/cache
+
+# Копируем собранные фронтенд-ассеты
 COPY --from=frontend-build /app/public/build /var/www/laravel/public/build
+
+# Права доступа для Laravel
+RUN chown -R www-data:www-data /var/www/laravel \
+    && chmod -R ug+rwX storage bootstrap/cache
+
+# Кешируем конфигурацию, маршруты и представления Laravel
+RUN php artisan config:clear \
+    && php artisan route:clear \
+    && php artisan view:clear
+
+# Graceful shutdown — PHP-FPM корректно завершает обработку запросов
+STOPSIGNAL SIGQUIT
+
+# Запуск от непривилегированного пользователя
+USER www-data

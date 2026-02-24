@@ -1,0 +1,48 @@
+# ==============================================================================
+# Docker Compose — Тестовое окружение (CI/CD)
+# ==============================================================================
+# Использование:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml exec laravel-php-nginx-socket php artisan test
+# ==============================================================================
+services:
+  laravel-php-nginx-socket:
+    build:
+      context: ./docker
+      dockerfile: php.Dockerfile
+      target: php-base
+    volumes:
+      - .:/var/www/laravel
+      - unix-socket:/var/run/php
+    environment:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: laravel-postgres-nginx-socket
+      DB_PORT: 5432
+      DB_DATABASE: laravel_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: testing
+      REDIS_HOST: laravel-redis-nginx-socket
+      XDEBUG_MODE: coverage
+      XDEBUG_START: "no"
+      XDEBUG_CLIENT_HOST: host.docker.internal
+
+  laravel-nginx-socket:
+    volumes:
+      - .:/var/www/laravel
+      - unix-socket:/var/run/php
+
+  laravel-postgres-nginx-socket:
+    environment:
+      POSTGRES_DB: laravel_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testing
+
+  # В тестовом окружении queue и scheduler не нужны
+  laravel-queue-nginx-socket:
+    profiles:
+      - disabled
+
+  laravel-scheduler-nginx-socket:
+    profiles:
+      - disabled

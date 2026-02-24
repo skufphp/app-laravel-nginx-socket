@@ -13,6 +13,7 @@ NC=\033[0m
 # Переменные Compose (используем merge для разработки)
 COMPOSE_DEV = docker compose -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE_PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
+COMPOSE_TEST = docker compose -f docker-compose.yml -f docker-compose.test.yml
 COMPOSE = $(COMPOSE_DEV)
 
 # Сервисы (имена сервисов из compose-файлов)
@@ -22,6 +23,8 @@ POSTGRES_SERVICE=laravel-postgres-nginx-socket
 REDIS_SERVICE=laravel-redis-nginx-socket
 PGADMIN_SERVICE=laravel-pgadmin-nginx-socket
 NODE_SERVICE=laravel-node-nginx-socket
+QUEUE_SERVICE=laravel-queue-nginx-socket
+SCHEDULER_SERVICE=laravel-scheduler-nginx-socket
 
 help: ## Показать справку
 	@echo "$(YELLOW)Laravel Docker Boilerplate (Unix Socket)$(NC)"
@@ -33,6 +36,7 @@ check-files: ## Проверить наличие всех необходимы�
 	@test -f docker-compose.yml || (echo "$(RED)✗ docker-compose.yml не найден$(NC)" && exit 1)
 	@test -f docker-compose.dev.yml || (echo "$(RED)✗ docker-compose.dev.yml не найден$(NC)" && exit 1)
 	@test -f docker-compose.prod.yml || (echo "$(RED)✗ docker-compose.prod.yml не найден$(NC)" && exit 1)
+	@test -f docker-compose.test.yml || (echo "$(RED)✗ docker-compose.test.yml не найден$(NC)" && exit 1)
 	@test -f .env || (echo "$(RED)✗ .env не найден. Убедитесь, что вы настроили проект Laravel$(NC)" && exit 1)
 	@test -f docker/php.Dockerfile || (echo "$(RED)✗ docker/php.Dockerfile не найден$(NC)" && exit 1)
 	@test -f docker/nginx.Dockerfile || (echo "$(RED)✗ docker/nginx.Dockerfile не найден$(NC)" && exit 1)
@@ -81,6 +85,12 @@ logs-node: ## Просмотр логов Node (HMR)
 
 logs-redis: ## Просмотр логов Redis
 	$(COMPOSE) logs -f $(REDIS_SERVICE)
+
+logs-queue: ## Просмотр логов Queue Worker
+	$(COMPOSE) logs -f $(QUEUE_SERVICE)
+
+logs-scheduler: ## Просмотр логов Scheduler
+	$(COMPOSE) logs -f $(SCHEDULER_SERVICE)
 
 status: ## Статус контейнеров
 	$(COMPOSE) ps
@@ -164,6 +174,18 @@ tinker: ## Запустить Laravel Tinker
 test-php: ## Запустить тесты PHP (PHPUnit)
 	$(COMPOSE) exec $(PHP_SERVICE) php artisan test
 
+test-ci: ## Запустить тесты в изолированном CI-окружении
+	$(COMPOSE_TEST) up -d
+	@echo "$(YELLOW)Ожидание готовности PostgreSQL...$(NC)"
+	@$(COMPOSE_TEST) exec $(POSTGRES_SERVICE) sh -c 'until pg_isready; do sleep 1; done'
+	$(COMPOSE_TEST) exec $(PHP_SERVICE) composer install --no-interaction
+	$(COMPOSE_TEST) exec $(PHP_SERVICE) php artisan migrate --force
+	$(COMPOSE_TEST) exec $(PHP_SERVICE) php artisan test
+	$(COMPOSE_TEST) down -v
+
+test-coverage: ## Запустить тесты с покрытием кода
+	$(COMPOSE) exec $(PHP_SERVICE) php artisan test --coverage
+
 permissions: ## Исправить права доступа для Laravel (storage/cache)
 	@echo "$(YELLOW)Исправление прав доступа...$(NC)"
 	$(COMPOSE) exec $(PHP_SERVICE) sh -c "if [ -d storage ]; then chown -R www-data:www-data storage bootstrap/cache && chmod -R ug+rwX storage bootstrap/cache; fi"
@@ -184,7 +206,9 @@ info: ## Показать информацию о проекте
 	@echo "  • PHP-FPM 8.5 (Alpine)"
 	@echo "  • Nginx"
 	@echo "  • PostgreSQL 18.2"
-	@echo "  • Redis"
+	@echo "  • Redis 8.6"
+	@echo "  • Queue Worker"
+	@echo "  • Scheduler (cron)"
 	@echo "  • pgAdmin 4 (dev only)"
 	@echo ""
 	@echo "$(GREEN)Структура:$(NC)"
