@@ -1,29 +1,30 @@
 services:
   # Основной контейнер Laravel PHP-FPM
-  laravel-php-nginx-socket:
+  laravel-php-nginx-uds:
     build:
       context: .
       dockerfile: docker/php.Dockerfile
-      target: php-base
-    container_name: laravel-php-nginx-socket
+      target: development
+      args:
+        INSTALL_XDEBUG: "true"
+    image: laravel-php-nginx-uds:dev
+    pull_policy: never
+    container_name: laravel-php-nginx-uds
     restart: unless-stopped
     working_dir: /var/www/laravel
+    volumes:
+      - unix-socket:/var/run/php
+      - .:/var/www/laravel
     environment:
+      APP_BASE_PATH: ${APP_BASE_PATH:-/var/www/laravel}
       XDEBUG_MODE: ${XDEBUG_MODE}
       XDEBUG_START: ${XDEBUG_START}
       XDEBUG_CLIENT_HOST: ${XDEBUG_CLIENT_HOST}
-    volumes:
-      # Общий том для UNIX-сокета (связь с Nginx)
-      - unix-socket:/var/run/php
     networks:
-      - laravel-nginx-socket-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - laravel-nginx-uds-network
+    depends_on:
+      - laravel-node-nginx-uds
     healthcheck:
-      # Проверка доступности FPM через сокет
       test:
         [
           "CMD-SHELL",
@@ -35,118 +36,176 @@ services:
       start_period: 10s
 
   # Веб-сервер Nginx (Proxy)
-  laravel-nginx-socket:
+  laravel-nginx-uds:
     build:
       context: .
       dockerfile: docker/nginx.Dockerfile
-    container_name: laravel-nginx-socket
+    image: laravel-nginx-uds:dev
+    pull_policy: never
+    container_name: laravel-nginx-uds
     restart: unless-stopped
     volumes:
-      # Подключаем тот же том с сокетом
       - unix-socket:/var/run/php
+      - .:/var/www/laravel
+    ports:
+      - "${NGINX_PORT}:80"
     networks:
-      - laravel-nginx-socket-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - laravel-nginx-uds-network
+    depends_on:
+      laravel-php-nginx-uds:
+        condition: service_healthy
+      laravel-node-nginx-uds:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "nginx", "-t" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost/ > /dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    depends_on:
-      laravel-php-nginx-socket:
-        condition: service_healthy
+
+  # Node.js для сборки фронтенда и Hot Module Replacement (HMR)
+  laravel-node-nginx-uds:
+    image: node:24-alpine
+    container_name: laravel-node-nginx-uds
+    restart: unless-stopped
+    working_dir: /var/www/laravel
+    volumes:
+      - .:/var/www/laravel
+      - node_modules:/var/www/laravel/node_modules
+    command: >
+      sh -lc '
+        # Установка зависимостей, если они отсутствуют
+        if [ -f package-lock.json ]; then
+          npm ci;
+        else
+          npm install;
+        fi;
+
+        # Запуск Vite в режиме разработки
+        npm run dev -- --host 0.0.0.0 --port 5173
+      '
+    ports:
+      - "5173:5173"
+    networks:
+      - laravel-nginx-uds-network
 
   # База данных PostgreSQL
-  laravel-postgres-nginx-socket:
+  laravel-postgres-nginx-uds:
     image: postgres:18.2-alpine
-    container_name: laravel-postgres-nginx-socket
+    container_name: laravel-postgres-nginx-uds
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
     volumes:
       - postgres-data:/var/lib/postgresql
+    ports:
+      - "${DB_FORWARD_PORT:-5432}:5432"
     networks:
-      - laravel-nginx-socket-network
+      - laravel-nginx-uds-network
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
 
   # Хранилище данных Redis
-  laravel-redis-nginx-socket:
+  laravel-redis-nginx-uds:
     image: redis:8.6-alpine
-    container_name: laravel-redis-nginx-socket
+    container_name: laravel-redis-nginx-uds
     restart: unless-stopped
-    command: [ "redis-server", "--appendonly", "yes" ]
+    command: [ "redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}" ]
     volumes:
       - redis-data:/data
+    ports:
+      - "${REDIS_FORWARD_PORT:-6379}:6379"
     networks:
-      - laravel-nginx-socket-network
+      - laravel-nginx-uds-network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "sh", "-c", "redis-cli -a \"${REDIS_PASSWORD:-}\" ping || redis-cli ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   # Laravel Queue Worker — обработка фоновых задач
-  laravel-queue-nginx-socket:
-    build:
-      context: ./docker
-      dockerfile: php.Dockerfile
-      target: php-base
-    container_name: laravel-queue-nginx-socket
+  laravel-queue-nginx-uds:
+    image: laravel-php-nginx-uds:dev
+    container_name: laravel-queue-nginx-uds
+    pull_policy: never
     restart: unless-stopped
     working_dir: /var/www/laravel
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    volumes:
+      - .:/var/www/laravel
+    command: [ "php", "artisan", "queue:work", "--sleep=1", "--tries=1" ]
     networks:
-      - laravel-nginx-socket-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - laravel-nginx-uds-network
     depends_on:
-      laravel-php-nginx-socket:
+      laravel-php-nginx-uds:
         condition: service_healthy
-      laravel-redis-nginx-socket:
+      laravel-postgres-nginx-uds:
         condition: service_healthy
+      laravel-redis-nginx-uds:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "ps aux | grep -v grep | grep 'queue:work' >/dev/null || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # Laravel Scheduler — запуск периодических задач (cron)
-  laravel-scheduler-nginx-socket:
-    build:
-      context: ./docker
-      dockerfile: php.Dockerfile
-      target: php-base
-    container_name: laravel-scheduler-nginx-socket
+  laravel-scheduler-nginx-uds:
+    image: laravel-php-nginx-uds:dev
+    container_name: laravel-scheduler-nginx-uds
+    pull_policy: never
     restart: unless-stopped
     working_dir: /var/www/laravel
-    command: ["sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    volumes:
+      - .:/var/www/laravel
+    command: [ "sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done" ]
     networks:
-      - laravel-nginx-socket-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - laravel-nginx-uds-network
     depends_on:
-      laravel-php-nginx-socket:
+      laravel-php-nginx-uds:
+        condition: service_healthy
+      laravel-postgres-nginx-uds:
+        condition: service_healthy
+      laravel-redis-nginx-uds:
+        condition: service_healthy
+
+  # Только для разработки: интерфейс управления БД (pgAdmin)
+  laravel-pgadmin-nginx-uds:
+    image: dpage/pgadmin4:latest
+    container_name: laravel-pgadmin-nginx-uds
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    networks:
+      - laravel-nginx-uds-network
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "-O", "-", "http://localhost/" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      laravel-postgres-nginx-uds:
         condition: service_healthy
 
 volumes:
   unix-socket:
+  node_modules:
   postgres-data:
   redis-data:
 
 networks:
-  laravel-nginx-socket-network:
+  laravel-nginx-uds-network:
     driver: bridge

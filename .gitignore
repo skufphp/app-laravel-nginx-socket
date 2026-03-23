@@ -1,40 +1,57 @@
-# Laravel
+# Logs
+*.log
+
+# Dependencies
 /vendor/
 /node_modules/
-/public/build/
-/public/hot/
-/public/storage
-/storage/*.key
-/storage/framework/cache/data/*
-/storage/framework/sessions/*
-/storage/framework/testing/*
-/storage/framework/views/*
-/storage/logs/*
+
+# Environment
 .env
-.env.backup
 .env.production
 !.env.docker
+
+# Laravel Framework
+/public/build/
+/public/hot
+/public/storage
+
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/testing/
+/storage/framework/views/
+/storage/framework/octane-server-state.json
+
+/storage/*.key
+/storage/oauth-*.key
+
+!/storage/.gitignore
+
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# Testing
+/.phpunit.cache
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
+
+# IDE & Editors
+/.fleet
+/.idea/
+/.nova
+/.vscode/
+/.zed
+.phpactor.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
 auth.json
 npm-debug.log
 yarn-error.log
-/.phpunit.cache
-/config.php
-/public/mix-manifest.json
 
-# Docker specific
-# Если в будущем будут добавлены локальные тома для БД в корень проекта
+# Docker
 /docker/postgres_data/
 
-# IDE & OS
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.DS_Store
-Thumbs.db
+# Claude
+.claude/

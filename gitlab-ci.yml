@@ -1,7 +1,0 @@
-include:
-  - project: 'ansible-templates-repos/ansible-laravel-internal'
-    ref: 'v2.0.0'
-    file: '/gitlab/docker-deploy.yml'
-    inputs:
-      app_url: "https://my-cool-site.com"
-      ci_templates_ref: 'v2.0.0'
