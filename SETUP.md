@@ -1,6 +1,6 @@
 # Инструкция по работе с Laravel Boilerplate
 
-Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM 8.5 + Nginx 1.27 (Unix socket) + PostgreSQL 18.2 + Redis 8.6**.
+Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM 8.5 + Nginx 1.29 (Unix socket) + PostgreSQL 18.2 + Redis 8.6**.
 
 ---
 
@@ -41,7 +41,7 @@ Laravel как REST / GraphQL API без UI. Один сервис, проста
 ```
 ├── docker/
 │   ├── php.Dockerfile          # Multi-stage: php-base → frontend-build → production
-│   ├── nginx.Dockerfile        # Nginx 1.27 Alpine
+│   ├── nginx.Dockerfile        # Nginx 1.29 Alpine
 │   ├── php/
 │   │   ├── php.ini             # PHP конфиг для разработки (display_errors = On)
 │   │   ├── php.prod.ini        # PHP конфиг для production (display_errors = Off, OPCache max)
@@ -50,13 +50,12 @@ Laravel как REST / GraphQL API без UI. Один сервис, проста
 │       └── conf.d/
 │           └── laravel.conf    # Nginx vhost (security headers, FastCGI буферы)
 ├── docker-compose.yml          # Базовые сервисы и разработка
-├── docker-compose.prod.yml     # Prod: образы из registry
+├── docker-compose.prod.yml     # Альтернативная prod-конфигурация
 ├── docker-compose.prod.local.yml # Prod: локальный запуск (сборка из Dockerfile)
 ├── .dockerignore               # Исключения из контекста сборки
 ├── .env.docker                 # Шаблон Docker-переменных для .env
 ├── Makefile                    # Автоматизация всех операций
-├── gitlab-ci.yml               # CI/CD конфигурация
-└── docs/                       # Документация и планы развития
+└── README.md / SETUP.md        # Основная документация по проекту
 ```
 
 ---
@@ -144,7 +143,7 @@ DB_HOST=laravel-postgres-nginx-uds
 DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=postgres
-DB_PASSWORD=root
+DB_PASSWORD=password
 
 REDIS_HOST=laravel-redis-nginx-uds
 REDIS_PORT=6379
@@ -157,7 +156,7 @@ CACHE_STORE=redis
 PGADMIN_DEFAULT_EMAIL=admin@example.com
 PGADMIN_DEFAULT_PASSWORD=admin
 
-NGINX_PORT=80
+NGINX_PORT=8050
 DB_FORWARD_PORT=5432
 REDIS_FORWARD_PORT=6379
 PGADMIN_PORT=8080
@@ -182,7 +181,7 @@ make setup
 6. Настроит права доступа
 
 **Готово!** Проект доступен:
-- 🌐 **Сайт:** http://localhost
+- 🌐 **Сайт:** http://localhost:8050
 - 🗄️ **pgAdmin:** http://localhost:8080
 - 🔥 **Vite HMR:** http://localhost:5173
 
@@ -204,7 +203,7 @@ make logs        # Логи всех сервисов
 - Vite HMR для горячей перезагрузки фронтенда
 - pgAdmin для управления БД
 - Порты PostgreSQL и Redis проброшены наружу для IDE/GUI-клиентов
-- Xdebug включен по умолчанию в `docker-compose.yml` (можно управлять через `.env`)
+- Xdebug установлен в dev-образе и включается через `.env`
 - `php.ini` с `display_errors = On`
 
 ### Production
@@ -214,10 +213,10 @@ make up-prod     # Запустить локально из образов (че
 ```
 
 Особенности prod-режима:
-- Иммутабельные образы из Docker Registry (CI/CD собирает)
-- `php.prod.ini`: `display_errors = Off`, OPCache без проверки timestamps, JIT
+- Локальный production-запуск через `docker-compose.prod.local.yml`
+- `php.prod.ini`: `display_errors = Off`, OPCache без проверки timestamps, JIT отключён
 - `composer install --no-dev --optimize-autoloader` внутри образа
-- Автоматические миграции при деплое (сервис `migrate`)
+- Автоматические миграции выполняются при старте PHP-контейнера
 - Queue Worker и Scheduler работают из тех же образов
 - Graceful shutdown (`STOPSIGNAL SIGQUIT`)
 - Процесс PHP-FPM запускается от `www-data` (non-root)
@@ -286,7 +285,6 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
 | `make fresh` | Пересоздать БД + сиды |
 | `make tinker` | Laravel Tinker |
 | `make test-php` | PHPUnit тесты |
-| `make test-ci` | Тесты в CI-окружении |
 | `make test-coverage` | Тесты с покрытием |
 
 ### Зависимости
@@ -332,7 +330,7 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
 ### Compose стратегия
 
 - **docker-compose.yml** — базовая конфигурация и среда разработки.
-- **docker-compose.prod.yml** — конфигурация для CI/CD и Registry.
+- **docker-compose.prod.yml** — альтернативная production-конфигурация.
 - **docker-compose.prod.local.yml** — локальный запуск продакшен-окружения.
 
 ### Multi-stage Dockerfile
@@ -370,17 +368,17 @@ production      →  php-base + код + vendor + ассеты + prod php.ini
 | `display_errors` | On | Off |
 | `display_startup_errors` | On | Off |
 | `opcache.validate_timestamps` | 1 | 0 |
-| `opcache.jit` | — | 1255 |
-| `opcache.jit_buffer_size` | — | 128M |
+| `opcache.jit` | off | off |
+| `opcache.jit_buffer_size` | 0 | 0 |
 | `max_execution_time` | 60 | 30 |
 | `error_reporting` | E_ALL | E_ALL & ~E_DEPRECATED & ~E_STRICT |
 | Xdebug | Доступен через ENV | Не устанавливается |
 
 ### Логирование
 
-Все сервисы используют Docker `json-file` драйвер с ротацией:
-- Максимальный размер файла: **10 MB**
-- Максимальное количество файлов: **3**
+В текущих `docker-compose` файлах отдельные настройки Docker log driver или ротации логов не заданы. Используется поведение Docker по умолчанию для вашей среды выполнения.
+
+Если нужна явная ротация логов, её нужно добавить в compose-конфигурацию через секцию `logging`.
 
 #### Laravel: логирование в Docker (Production)
 

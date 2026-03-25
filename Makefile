@@ -26,7 +26,7 @@ COMPOSE = docker compose -f docker-compose.yml
 COMPOSE_PROD = docker compose --env-file .env.production -f docker-compose.prod.local.yml
 
 NGINX_PORT := $(shell grep '^NGINX_PORT=' .env 2>/dev/null | cut -d '=' -f 2- | tr -d '[:space:]')
-ifeq ($(APP_PORT),)
+ifeq ($(NGINX_PORT),)
 NGINX_PORT := 8050
 endif
 
@@ -68,7 +68,7 @@ check-files-prod: ## Проверить наличие всех необходи
 
 up: check-files ## Запустить контейнеры (Dev)
 	$(COMPOSE) up -d
-	@echo "$(GREEN)✓ Проект запущен на http://localhost$(NC)"
+	@echo "$(GREEN)✓ Проект запущен на http://localhost:$(NGINX_PORT)$(NC)"
 
 up-prod: check-files-prod ## Запустить контейнеры (Prod)
 	$(COMPOSE_PROD) up -d
@@ -184,11 +184,21 @@ shell-postgres-prod: ## Подключиться к PostgreSQL CLI (Prod)
 
 shell-redis: ## Подключиться к Redis CLI
 	@echo "$(YELLOW)Подключение к Redis...$(NC)"
-	$(COMPOSE) exec $(REDIS_SERVICE) redis-cli ping
+	@REDIS_PASSWORD=$$(grep '^REDIS_PASSWORD=' .env 2>/dev/null | cut -d '=' -f 2- | tr -d '[:space:]'); \
+	if [ -n "$$REDIS_PASSWORD" ]; then \
+		$(COMPOSE) exec $(REDIS_SERVICE) redis-cli -a "$$REDIS_PASSWORD" ping; \
+	else \
+		$(COMPOSE) exec $(REDIS_SERVICE) redis-cli ping; \
+	fi
 
 shell-redis-prod: ## Подключиться к Redis CLI (Prod)
 	@echo "$(YELLOW)Подключение к Redis (Prod)...$(NC)"
-	$(COMPOSE_PROD) exec $(REDIS_SERVICE) redis-cli ping
+	@REDIS_PASSWORD=$$(grep '^REDIS_PASSWORD=' .env.production 2>/dev/null | cut -d '=' -f 2- | tr -d '[:space:]'); \
+	if [ -n "$$REDIS_PASSWORD" ]; then \
+		$(COMPOSE_PROD) exec $(REDIS_SERVICE) redis-cli -a "$$REDIS_PASSWORD" ping; \
+	else \
+		$(COMPOSE_PROD) exec $(REDIS_SERVICE) redis-cli ping; \
+	fi
 
 # --- Команды Laravel ---
 
@@ -198,13 +208,18 @@ setup: ## Полная инициализация проекта с нуля
 	@echo "$(YELLOW)Ожидание готовности PostgreSQL...$(NC)"
 	@$(COMPOSE) exec $(POSTGRES_SERVICE) sh -c 'until pg_isready; do sleep 1; done'
 	@echo "$(YELLOW)Ожидание готовности Redis...$(NC)"
-	@$(COMPOSE) exec $(REDIS_SERVICE) sh -c 'until redis-cli ping | grep -q PONG; do sleep 1; done'
+	@REDIS_PASSWORD=$$(grep '^REDIS_PASSWORD=' .env 2>/dev/null | cut -d '=' -f 2- | tr -d '[:space:]'); \
+	if [ -n "$$REDIS_PASSWORD" ]; then \
+		$(COMPOSE) exec $(REDIS_SERVICE) sh -c "until redis-cli -a '$$REDIS_PASSWORD' ping | grep -q PONG; do sleep 1; done"; \
+	else \
+		$(COMPOSE) exec $(REDIS_SERVICE) sh -c 'until redis-cli ping | grep -q PONG; do sleep 1; done'; \
+	fi
 	@make install-deps
 	@make artisan CMD="key:generate"
 	@make migrate
 	@make permissions
 	@make cleanup-nginx
-	@echo "$(GREEN)✓ Проект готов: http://localhost$(NC)"
+	@echo "$(GREEN)✓ Проект готов: http://localhost:$(NGINX_PORT)$(NC)"
 
 install-deps: ## Установка всех зависимостей (Composer + NPM)
 	@echo "$(YELLOW)Установка зависимостей...$(NC)"
@@ -291,7 +306,7 @@ info: ## Показать информацию о проекте
 	@echo "  • .env              - единый файл настроек (Laravel + Docker)"
 	@echo ""
 	@echo "$(GREEN)Порты:$(NC)"
-	@echo "  • 80   - Nginx (Web Server)"
+	@echo "  • $(NGINX_PORT) - Nginx (Web Server)"
 	@echo "  • 5432 - PostgreSQL (dev forwarded)"
 	@echo "  • 6379 - Redis (dev forwarded)"
 	@echo "  • 8080 - pgAdmin (dev only)"
@@ -299,8 +314,8 @@ info: ## Показать информацию о проекте
 
 validate: ## Проверить доступность сервисов по HTTP
 	@echo "$(YELLOW)Проверка работы сервисов...$(NC)"
-	@echo -n "Nginx (http://localhost): "
-	@curl -s -o /dev/null -w "%{http_code}" http://localhost && echo " $(GREEN)✓$(NC)" || echo " $(RED)✗$(NC)"
+	@echo -n "Nginx (http://localhost:$(NGINX_PORT)): "
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:$(NGINX_PORT) && echo " $(GREEN)✓$(NC)" || echo " $(RED)✗$(NC)"
 	@echo -n "pgAdmin (http://localhost:8080): "
 	@curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 && echo " $(GREEN)✓$(NC)" || echo " $(RED)✗$(NC)"
 	@echo "$(YELLOW)Статус контейнеров:$(NC)"
