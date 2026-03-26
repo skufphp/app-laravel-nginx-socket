@@ -49,19 +49,15 @@ RUN set -eux; \
 RUN set -eux; \
     docker-php-ext-configure gd --with-freetype --with-jpeg; \
     docker-php-ext-install -j"$(nproc)" \
-      pdo \
       pdo_pgsql \
       pgsql \
-      mbstring \
-      xml \
       gd \
       bcmath \
       zip \
       intl \
       sockets \
       pcntl; \
-    pie install phpredis/phpredis; \
-    docker-php-ext-enable redis
+    pie install phpredis/phpredis
 
 # Очистка временных файлов
 RUN set -eux; \
