@@ -7,7 +7,7 @@
 *   **Высокая производительность:** Связь между Nginx и PHP-FPM реализована через **Unix Socket** в общем томе, что исключает накладные расходы TCP-стека.
 *   **Современный стек:**
     *   **PHP 8.5 (Alpine)** — свежая версия с предустановленными расширениями (bcmath, gd, intl, pdo_pgsql и др.).
-    *   **Nginx** — оптимизированный конфиг для Laravel.
+    *   **Nginx 1.29** — оптимизированный конфиг для Laravel через FastCGI.
     *   **PostgreSQL 18.2** — основная база данных.
     *   **Redis 8.6** — для кеширования и очередей.
     *   **Node.js 24** — для сборки фронтенда (Vite) с поддержкой Hot Module Replacement (HMR).
@@ -57,6 +57,7 @@
 
 *   **Web-сайт:** [http://localhost:8050](http://localhost:8050)
 *   **pgAdmin:** [http://localhost:8080](http://localhost:8080)
+*   **Vite HMR:** [http://localhost:5173](http://localhost:5173)
 *   **Postgres:** `localhost:5432` (снаружи, если не переопределено в `.env`)
 *   **Redis:** `localhost:6379` (снаружи, если не переопределено в `.env`)
 

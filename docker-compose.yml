@@ -22,9 +22,8 @@ services:
       XDEBUG_CLIENT_HOST: ${XDEBUG_CLIENT_HOST}
     networks:
       - laravel-nginx-uds-network
-    depends_on:
-      - laravel-node-nginx-uds
     healthcheck:
+      # Проверка доступности FPM через сокет
       test:
         [
           "CMD-SHELL",

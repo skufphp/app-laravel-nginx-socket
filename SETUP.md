@@ -1,6 +1,6 @@
 # Инструкция по работе с Laravel Boilerplate
 
-Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM 8.5 + Nginx 1.29 (Unix socket) + PostgreSQL 18.2 + Redis 8.6**.
+Этот boilerplate предназначен для быстрого развертывания Laravel-проекта с архитектурой **PHP-FPM 8.5 + Nginx 1.29 (Unix Socket) + PostgreSQL 18.2 + Redis 8.6**.
 
 ---
 
@@ -38,24 +38,25 @@ Laravel как REST / GraphQL API без UI. Один сервис, проста
 
 ## Структура проекта
 
-```
+```text
 ├── docker/
-│   ├── php.Dockerfile          # Multi-stage: php-base → frontend-build → production
-│   ├── nginx.Dockerfile        # Nginx 1.29 Alpine
+│   ├── php.Dockerfile            # Multi-stage: php-base → frontend-build → production
+│   ├── nginx.Dockerfile          # Nginx 1.29 Alpine
 │   ├── php/
-│   │   ├── php.ini             # PHP конфиг для разработки (display_errors = On)
-│   │   ├── php.prod.ini        # PHP конфиг для production (display_errors = Off, OPCache max)
-│   │   └── www.conf            # PHP-FPM pool (Unix socket, healthcheck ping)
+│   │   ├── php.ini               # PHP конфиг для разработки (display_errors = On)
+│   │   ├── php.prod.ini          # PHP конфиг для production (display_errors = Off, OPCache max)
+│   │   └── www.conf              # PHP-FPM pool (Unix Socket, healthcheck ping)
 │   └── nginx/
 │       └── conf.d/
-│           └── laravel.conf    # Nginx vhost (security headers, FastCGI буферы)
-├── docker-compose.yml          # Базовые сервисы и разработка
-├── docker-compose.prod.yml     # Альтернативная prod-конфигурация
+│           └── laravel.conf      # Nginx vhost (security headers, FastCGI buffers)
+├── docker-compose.yml            # Базовая конфигурация сервисов и разработка
+├── docker-compose.prod.yml       # Прод-конфигурация сервисов
 ├── docker-compose.prod.local.yml # Prod: локальный запуск (сборка из Dockerfile)
-├── .dockerignore               # Исключения из контекста сборки
-├── .env.docker                 # Шаблон Docker-переменных для .env
-├── Makefile                    # Автоматизация всех операций
-└── README.md / SETUP.md        # Основная документация по проекту
+├── .dockerignore                 # Исключения из контекста сборки
+├── .env.docker                   # Шаблон Docker-переменных для .env
+├── .env.production.example       # Пример production-переменных
+├── Makefile                      # Автоматизация всех операций
+└── README.md / SETUP.md          # Основная документация по проекту
 ```
 
 ---
@@ -79,7 +80,7 @@ cd my-project
 Скопируйте в корень Laravel-проекта:
 - Папку `docker/` (со всеми подпапками)
 - Файлы `docker-compose.yml`, `docker-compose.prod.yml`, `docker-compose.prod.local.yml`
-- Файлы `Makefile`, `.dockerignore`, `.env.docker`
+- Файлы `Makefile`, `.dockerignore`, `.env.docker`, `.env.production.example`
 
 ### Шаг 3. Настройка конфигурационных файлов Laravel
 
@@ -93,13 +94,13 @@ rm database/database.sqlite
 
 Добавьте в `.gitignore`:
 
-```
+```text
 database/*.sqlite
 ```
 
 #### Обновление fallback-значений конфигурации
 
-Laravel хранит дефолтные значения подключений в `config/`. По умолчанию они указывают на `sqlite` и `database`. Для корректной работы в случае проблем с `.env` (сломался dotenv, забыли скопировать) замените их на значения, соответствующие этому стеку:
+Laravel хранит дефолтные значения подключений в `config/`. По умолчанию они указывают на `sqlite` и `database`. Для корректной работы в случае проблем с `.env` замените их на значения, соответствующие этому стеку:
 
 **`config/database.php`**
 ```php
@@ -128,7 +129,7 @@ Laravel хранит дефолтные значения подключений 
 'driver' => env('SESSION_DRIVER', 'redis'),
 ```
 
-> **Примечание:** Миграция `create_cache_table` создаёт таблицу `cache` в БД, но при `CACHE_STORE=redis` она не используется. Её можно удалить для чистоты или оставить как fallback — на ваше усмотрение.
+> **Примечание:** Миграция `create_cache_table` создаёт таблицу `cache` в БД, но при `CACHE_STORE=redis` она не используется. Её можно удалить для чистоты или оставить как fallback.
 
 ---
 
@@ -176,14 +177,15 @@ make setup
 1. Соберёт Docker-образы
 2. Запустит все контейнеры (PHP-FPM, Nginx, PostgreSQL, Redis, Queue Worker, Scheduler, Node HMR, pgAdmin)
 3. Установит зависимости (Composer + NPM)
-4. Сгенерирует APP_KEY
+4. Сгенерирует `APP_KEY`
 5. Запустит миграции
 6. Настроит права доступа
+7. Удалит `public/.htaccess`, так как маршрутизация уже настроена в `laravel.conf`
 
 **Готово!** Проект доступен:
-- 🌐 **Сайт:** http://localhost:8050
-- 🗄️ **pgAdmin:** http://localhost:8080
-- 🔥 **Vite HMR:** http://localhost:5173
+- **Сайт:** http://localhost:8050
+- **pgAdmin:** http://localhost:8080
+- **Vite HMR:** http://localhost:5173
 
 ---
 
@@ -209,7 +211,8 @@ make logs        # Логи всех сервисов
 ### Production
 
 ```bash
-make up-prod     # Запустить локально из образов (через docker-compose.prod.local.yml)
+cp .env.production.example .env.production
+make up-prod
 ```
 
 Особенности prod-режима:
@@ -219,18 +222,7 @@ make up-prod     # Запустить локально из образов (че
 - Автоматические миграции выполняются при старте PHP-контейнера
 - Queue Worker и Scheduler работают из тех же образов
 - Graceful shutdown (`STOPSIGNAL SIGQUIT`)
-- Процесс PHP-FPM запускается от `www-data` (non-root)
-
-### Testing
-
-```bash
-make test-php    # Тесты в текущем dev-окружении
-make test-coverage  # Тесты с покрытием кода (Xdebug coverage)
-```
-
-Особенности тестирования:
-- По умолчанию используется основная БД (можно настроить в `phpunit.xml`)
-- Xdebug в режиме `coverage` (для `make test-coverage`)
+- Процесс PHP-FPM запускается от `www-data`
 
 ---
 
@@ -242,26 +234,38 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
 |---------|----------|
 | `make up` | Запустить проект (dev) |
 | `make up-prod` | Запустить проект (prod) |
-| `make down` | Остановить контейнеры |
+| `make down` | Остановить dev-контейнеры |
+| `make down-prod` | Остановить prod-контейнеры |
 | `make restart` | Перезапустить контейнеры |
 | `make build` | Собрать образы |
-| `make rebuild` | Пересобрать без кэша |
+| `make rebuild` | Пересобрать dev-образы без кэша |
+| `make rebuild-prod` | Пересобрать prod-образы без кэша |
 | `make status` | Статус контейнеров |
 | `make clean` | Удалить контейнеры и тома |
-| `make clean-all` | Полная очистка (+ образы) |
+| `make clean-all` | Полная очистка dev (+ образы) |
 | `make dev-reset` | Сброс среды разработки |
+| `make clean-prod` | Удалить prod-контейнеры и тома |
+| `make clean-all-prod` | Полная очистка prod (+ образы) |
+| `make prod-reset` | Сброс prod-среды |
 
 ### Логи
 
 | Команда | Описание |
 |---------|----------|
-| `make logs` | Все сервисы |
+| `make logs` | Все dev-сервисы |
+| `make logs-prod` | Все prod-сервисы |
 | `make logs-php` | PHP-FPM |
+| `make logs-php-prod` | PHP-FPM (prod) |
 | `make logs-nginx` | Nginx |
+| `make logs-nginx-prod` | Nginx (prod) |
 | `make logs-postgres` | PostgreSQL |
+| `make logs-postgres-prod` | PostgreSQL (prod) |
 | `make logs-redis` | Redis |
+| `make logs-redis-prod` | Redis (prod) |
 | `make logs-queue` | Queue Worker |
+| `make logs-queue-prod` | Queue Worker (prod) |
 | `make logs-scheduler` | Scheduler |
+| `make logs-scheduler-prod` | Scheduler (prod) |
 | `make logs-node` | Node (HMR) |
 | `make logs-pgadmin` | pgAdmin |
 
@@ -270,33 +274,74 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
 | Команда | Описание |
 |---------|----------|
 | `make shell-php` | Консоль PHP-контейнера |
+| `make shell-php-prod` | Консоль PHP-контейнера (prod) |
 | `make shell-nginx` | Консоль Nginx |
+| `make shell-nginx-prod` | Консоль Nginx (prod) |
 | `make shell-node` | Консоль Node |
-| `make shell-postgres` | PostgreSQL CLI (psql) |
-| `make shell-redis` | Redis CLI |
+| `make shell-postgres` | PostgreSQL CLI (`psql`) |
+| `make shell-postgres-prod` | PostgreSQL CLI (`psql`) для prod |
+| `make shell-redis` | Redis CLI / ping |
+| `make shell-redis-prod` | Redis CLI / ping для prod |
+| `make shell-queue` | Консоль Queue Worker |
+| `make shell-queue-prod` | Консоль Queue Worker (prod) |
+| `make shell-scheduler` | Консоль Scheduler |
+| `make shell-scheduler-prod` | Консоль Scheduler (prod) |
 
-### Laravel
+### Laravel и зависимости
 
 | Команда | Описание |
 |---------|----------|
+| `make setup` | Полная инициализация проекта |
+| `make install-deps` | Установить Composer + NPM зависимости |
 | `make artisan CMD="..."` | Любая artisan-команда |
+| `make composer CMD="..."` | Любая composer-команда |
+| `make composer-install` | `composer install` |
+| `make composer-update` | `composer update` |
+| `make composer-require PACKAGE=vendor/pkg` | `composer require` |
 | `make migrate` | Запустить миграции |
 | `make rollback` | Откатить миграции |
 | `make fresh` | Пересоздать БД + сиды |
 | `make tinker` | Laravel Tinker |
-| `make test-php` | PHPUnit тесты |
+| `make test-php` | PHP-тесты |
 | `make test-coverage` | Тесты с покрытием |
-
-### Зависимости
-
-| Команда | Описание |
-|---------|----------|
-| `make composer-install` | `composer install` |
-| `make composer-update` | `composer update` |
-| `make composer-require PACKAGE=vendor/pkg` | `composer require` |
 | `make npm-install` | `npm install` |
 | `make npm-dev` | Vite dev server |
-| `make npm-build` | Сборка фронтенда |
+| `make npm-build` | Production-сборка фронтенда |
+| `make permissions` | Исправить права `storage` и `bootstrap/cache` |
+| `make cleanup-nginx` | Удалить `public/.htaccess` |
+| `make info` | Показать информацию о проекте |
+| `make validate` | Проверить HTTP-доступность сервисов |
+
+---
+
+## Тестирование
+
+```bash
+make test-php
+make test-coverage
+```
+
+Особенности тестирования:
+- По умолчанию используется основная БД, если иное не настроено в `phpunit.xml`
+- Для покрытия используется Xdebug
+
+---
+
+## Production-деплой
+
+Минимальная последовательность для локальной проверки production-режима:
+
+```bash
+cp .env.production.example .env.production
+make up-prod
+make logs-prod
+```
+
+Что важно проверить перед деплоем:
+- Актуальные значения `APP_URL`, `APP_KEY`, `DB_*`, `REDIS_*` в `.env.production`
+- Настройки внешнего reverse proxy / TLS-терминации, если HTTPS завершается вне контейнера
+- Доступность постоянных томов для PostgreSQL и Redis
+- Политику перезапуска и мониторинг контейнеров
 
 ---
 
@@ -304,7 +349,7 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
 
 ### Схема взаимодействия
 
-```
+```text
                     ┌─────────────┐
                     │   Client    │
                     └──────┬──────┘
@@ -319,148 +364,92 @@ make test-coverage  # Тесты с покрытием кода (Xdebug coverage
                     │ (8.5 Alpine)│          │
                     └──────┬──────┘          │
                            │                 │
-              ┌────────────┼────────────┐    │
-              │            │            │    │
-       ┌──────▼──────┐ ┌──▼───┐ ┌──────▼────▼─┐
-       │  PostgreSQL  │ │Redis │ │ Queue Worker │
-       │   (18.2)     │ │(8.6) │ │ + Scheduler  │
-       └─────────────┘ └──────┘ └──────────────┘
+                 ┌─────────▼─────────┐ ┌────▼─────┐
+                 │   PostgreSQL 18   │ │ Redis 8.6│
+                 └───────────────────┘ └──────────┘
 ```
 
-### Compose стратегия
+### Ключевая идея
 
-- **docker-compose.yml** — базовая конфигурация и среда разработки.
-- **docker-compose.prod.yml** — альтернативная production-конфигурация.
-- **docker-compose.prod.local.yml** — локальный запуск продакшен-окружения.
-
-### Multi-stage Dockerfile
-
-```
-frontend-build  →  Node.js: npm ci + npm run build
-php-base        →  PHP-FPM + расширения + Composer (dev/prod база)
-production      →  php-base + код + vendor + ассеты + prod php.ini
-```
+Nginx выступает как frontend web server и проксирует PHP-запросы в PHP-FPM через Unix Socket (`/var/run/php/php-fpm.sock`). Это даёт ту же контейнерную изоляцию, но без накладных расходов TCP внутри связки Nginx ↔ PHP-FPM.
 
 ---
 
 ## Конфигурация сервисов
 
-### PHP-FPM (`docker/php/www.conf`)
+### PHP-FPM
+- Базовый runtime Laravel-приложения
+- В dev-режиме монтирует код проекта
+- В prod-режиме собирается как финальный immutable image
 
-- Unix socket: `/var/run/php/php-fpm.sock`
-- Process manager: `dynamic` (min 2, max 10)
-- Healthcheck endpoint: `/ping` → `pong`
-- Slowlog включён для диагностики
-- `pm.max_requests = 500` — защита от утечек памяти
+### Nginx
+- Обслуживает публичные ассеты
+- Проксирует PHP через FastCGI
+- Использует конфигурацию из `docker/nginx/conf.d/laravel.conf`
 
-### Nginx (`docker/nginx/conf.d/laravel.conf`)
+### PostgreSQL
+- Основная реляционная БД
+- В dev-режиме проброшена на `DB_FORWARD_PORT`
 
-- Security headers: `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`
-- `server_tokens off` — скрыта версия Nginx
-- Защита от доступа к `.env`, `.git` и другим скрытым файлам
-- FastCGI буферы настроены для больших ответов
-- `client_max_body_size 20M`
+### Redis
+- Кэш, очереди, сессии
+- В dev-режиме проброшен на `REDIS_FORWARD_PORT`
 
-### PHP конфигурация
+### Node
+- Нужен только в development для Vite HMR
 
-| Параметр | Development | Production |
-|----------|-------------|------------|
-| `display_errors` | On | Off |
-| `display_startup_errors` | On | Off |
-| `opcache.validate_timestamps` | 1 | 0 |
-| `opcache.jit` | off | off |
-| `opcache.jit_buffer_size` | 0 | 0 |
-| `max_execution_time` | 60 | 30 |
-| `error_reporting` | E_ALL | E_ALL & ~E_DEPRECATED & ~E_STRICT |
-| Xdebug | Доступен через ENV | Не устанавливается |
+### Queue Worker / Scheduler
+- Отдельные сервисы для фоновых задач Laravel
+- Запускаются как отдельные процессы в Docker Compose
 
-### Логирование
-
-В текущих `docker-compose` файлах отдельные настройки Docker log driver или ротации логов не заданы. Используется поведение Docker по умолчанию для вашей среды выполнения.
-
-Если нужна явная ротация логов, её нужно добавить в compose-конфигурацию через секцию `logging`.
-
-#### Laravel: логирование в Docker (Production)
-
-В production рекомендуется направлять логи Laravel в `stderr` вместо файла `storage/logs/laravel.log`. Это соответствует Docker-native подходу: логи попадают в `docker logs` и агрегируются любым log-driver (json-file, fluentd, Loki и др.):
-
-```dotenv
-# .env (production)
-LOG_CHANNEL=stack
-LOG_STACK=stderr
-```
-
-> По умолчанию (`LOG_CHANNEL=single`) Laravel пишет в файл внутри иммутабельного контейнера, что не рекомендуется для production.
+### pgAdmin
+- Доступен только в dev-окружении
+- Используется для администрирования PostgreSQL через браузер
 
 ---
 
 ## SSL/TLS (HTTPS)
 
-В production HTTPS обычно терминируется на уровне reverse proxy / load balancer (Traefik, Caddy, облачный LB) **перед** этим стеком. Nginx в контейнере слушает порт 80 (HTTP).
+По умолчанию boilerplate рассчитан на локальную работу по HTTP. Для production HTTPS обычно завершается:
+- либо на внешнем reverse proxy / ingress,
+- либо на балансировщике перед контейнерами.
 
-Если нужен HTTPS напрямую:
-
-1. Добавьте сертификаты в volume или секреты
-2. Обновите `laravel.conf`:
-   ```nginx
-   listen 443 ssl;
-   ssl_certificate /etc/nginx/ssl/cert.pem;
-   ssl_certificate_key /etc/nginx/ssl/key.pem;
-   ```
-3. Пробросьте порт 443 в `docker-compose.prod.yml`
+Если TLS нужен внутри контейнерного контура, настройте отдельный frontend proxy или адаптируйте `laravel.conf` под SSL-виртуальный хост и сертификаты.
 
 ---
 
 ## Troubleshooting
 
-### Контейнер PHP не стартует
+### Сайт не открывается
+- Проверьте `make status`
+- Проверьте `make logs-nginx`
+- Убедитесь, что порт `NGINX_PORT` свободен
 
-```bash
-make logs-php
-# Проверьте: правильно ли настроен .env, есть ли vendor/ (для dev: make composer-install)
-```
+### Laravel не подключается к БД
+- Проверьте `DB_HOST=laravel-postgres-nginx-uds`
+- Проверьте `make logs-postgres`
+- Убедитесь, что в `.env` выбран `DB_CONNECTION=pgsql`
 
-### Ошибка "Connection refused" к БД
+### Redis недоступен
+- Проверьте `REDIS_HOST=laravel-redis-nginx-uds`
+- Проверьте `make logs-redis`
+- Если задан пароль, убедитесь, что он совпадает в `.env` и compose
 
-Убедитесь, что `DB_HOST` в `.env` совпадает с именем сервиса в `docker-compose.yml`:
-```dotenv
-DB_HOST=laravel-postgres-nginx-uds
-```
+### Vite HMR не работает
+- Проверьте `make logs-node`
+- Убедитесь, что порт `5173` свободен
+- Проверьте, что frontend использует Vite и зависимости установлены
 
-### Права доступа (storage/cache)
+### Ошибки прав доступа
+- Выполните:
 
 ```bash
 make permissions
 ```
 
-### Xdebug не работает
-
-1. Пересоберите образ с Xdebug:
-   ```bash
-   COMPOSE_DEV_ARGS="--build-arg INSTALL_XDEBUG=true" make rebuild
-   ```
-   Или добавьте в `docker-compose.dev.yml` в секцию `build.args`:
-   ```yaml
-   args:
-     INSTALL_XDEBUG: "true"
-   ```
-2. Настройте `.env`:
-   ```dotenv
-   XDEBUG_MODE=debug
-   XDEBUG_START=yes
-   ```
-3. Перезапустите: `make restart`
-
-### Queue Worker не обрабатывает задачи
+### Остался `public/.htaccess`
+- Выполните:
 
 ```bash
-make logs-queue
-# Убедитесь, что QUEUE_CONNECTION=redis в .env
-# Перезапустите: make restart
-```
-
-### Полный сброс окружения
-
-```bash
-make dev-reset   # Удалит всё (контейнеры, образы, тома) и пересоберёт
+make cleanup-nginx
 ```
